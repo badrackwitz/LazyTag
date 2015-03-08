@@ -59,7 +59,7 @@ window.LazyTag = (function() {
 
 
     var DomReadyEventTagInvoker = function() {
-        this.handledTags = ['asdasd'];
+        this.handledTags = [];
         this.fired = false;
     };
     DomReadyEventTagInvoker.prototype.activate = function(tagManager) {
@@ -108,12 +108,61 @@ window.LazyTag = (function() {
 
 
 
+    var VisibleEventTagInvoker = function() {
+        this.handledTags = [];
+    };
+    VisibleEventTagInvoker.prototype.activate = function(tagManager) {
+        this.tagManager = tagManager;
+
+        var self = this;
+        window.addEventListener('scroll', function() {
+            for(var idx in self.handledTags) {
+                if(!self.handledTags[idx].fired) {
+                    var tag = self.handledTags[idx].tag;
+                    var container = document.querySelector(tag.selector);
+                    if(self.isVisible(container)) {
+                        self.handledTags[idx].fired = true;
+                        self.tagManager.invoke(tag.id);
+                    }
+                }
+            }
+        });
+    };
+    VisibleEventTagInvoker.prototype.handleTag = function(tag) {
+        this.handledTags.push({
+            tag: tag,
+            fired: false
+        });
+    };
+    VisibleEventTagInvoker.prototype.isVisible = function(el) {
+        var top = el.offsetTop;
+        var left = el.offsetLeft;
+        var width = el.offsetWidth;
+        var height = el.offsetHeight;
+
+        while(el.offsetParent) {
+            el = el.offsetParent;
+            top += el.offsetTop;
+            left += el.offsetLeft;
+        }
+
+        return (
+            top < (window.pageYOffset + window.innerHeight) &&
+            left < (window.pageXOffset + window.innerWidth) &&
+            (top + height) > window.pageYOffset &&
+            (left + width) > window.pageXOffset
+        );
+    };
+
+
+
     // setup
     return (function() {
         var instance = new LazyTag();
 
         instance.registerEvent('domReady', new DomReadyEventTagInvoker());
         instance.registerEvent('load', new LoadEventTagInvoker());
+        instance.registerEvent('visible', new VisibleEventTagInvoker());
 
         return instance;
     }());
